@@ -741,13 +741,13 @@ button {
 
 @media (max-width: 720px) {
   body {
-    overflow: auto;
+    overflow: hidden;
   }
 
   .app-shell {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(410px, calc(100dvh - 172px)) auto 104px;
+    grid-template-rows: auto minmax(410px, calc(100dvh - 162px)) 104px;
     max-height: none;
   }
 
@@ -809,12 +809,16 @@ button {
 
   .preset-panel,
   .adjustment-panel {
+    position: fixed;
+    z-index: 9;
+    right: 0;
+    bottom: 104px;
+    left: 0;
     display: none;
-    grid-column: 1;
-    grid-row: 3;
-    max-height: 270px;
+    height: min(270px, calc(100dvh - 162px));
     border: 0;
     border-top: 1px solid var(--border);
+    box-shadow: 0 -8px 20px rgb(0 0 0 / 35%);
   }
 
   body[data-mobile-panel="presets"] .preset-panel {
@@ -850,7 +854,7 @@ button {
     bottom: 0;
     z-index: 8;
     grid-column: 1;
-    grid-row: 4;
+    grid-row: 3;
     grid-template-columns: 44px minmax(0, 1fr);
     height: 104px;
   }
