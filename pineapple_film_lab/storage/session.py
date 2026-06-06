@@ -73,6 +73,16 @@ class SessionStorage:
             except KeyError as error:
                 raise KeyError(f"unknown asset: {asset_id}") from error
 
+    def remove_asset(self, asset_id):
+        with self._lock:
+            try:
+                asset = self._assets.pop(asset_id)
+            except KeyError as error:
+                raise KeyError(f"unknown asset: {asset_id}") from error
+        asset.path.unlink(missing_ok=True)
+        self.path_for("previews", f"{asset_id}.jpg").unlink(missing_ok=True)
+        return asset
+
     def cleanup(self):
         with self._lock:
             self._assets.clear()

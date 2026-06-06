@@ -44,7 +44,7 @@ class JobQueue:
             Thread(
                 target=self._worker,
                 name=f"pineapple-film-job-{index + 1}",
-                daemon=False,
+                daemon=True,
             )
             for index in range(worker_count)
         ]

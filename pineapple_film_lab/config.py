@@ -7,4 +7,4 @@ class DefaultConfig:
     SESSION_ROOT = Path(tempfile.gettempdir()) / "pineapple-film-lab"
     PREVIEW_MAX_EDGE = 1600
     JPEG_QUALITY = 92
-
+    JOB_WORKERS = 2

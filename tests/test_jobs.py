@@ -82,6 +82,7 @@ def test_failed_job_can_be_retried():
 
 def test_shutdown_rejects_new_jobs_and_joins_workers():
     queue = JobQueue(worker_count=2)
+    assert all(worker.daemon for worker in queue.workers)
 
     queue.shutdown()
 
