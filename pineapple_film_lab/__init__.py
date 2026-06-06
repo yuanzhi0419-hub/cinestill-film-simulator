@@ -45,6 +45,10 @@ def _register_error_handlers(app):
     def too_large(error):
         return {"error": "上传内容超过大小限制"}, 413
 
+    @app.errorhandler(409)
+    def conflict(error):
+        return {"error": getattr(error, "description", "操作冲突")}, 409
+
     @app.errorhandler(500)
     def internal_error(error):
         return {"error": "本地处理发生错误"}, 500

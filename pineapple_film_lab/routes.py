@@ -1,6 +1,8 @@
 from io import BytesIO
 from pathlib import Path
+import re
 from uuid import uuid4
+from zipfile import ZIP_DEFLATED, ZipFile
 
 import cv2
 import numpy as np
@@ -144,6 +146,128 @@ def upload_lut():
     return {"lut": {"id": lut_id, "name": safe_name, "size": lut.size}}, 201
 
 
+@api.post("/api/exports")
+def create_export():
+    payload = request.get_json(silent=True) or {}
+    asset_ids = payload.get("asset_ids")
+    parameters_by_asset = payload.get("parameters_by_asset") or {}
+    if not isinstance(asset_ids, list) or not asset_ids:
+        abort(400, description="请选择至少一张照片")
+    if len(set(asset_ids)) != len(asset_ids):
+        abort(400, description="导出列表包含重复照片")
+
+    assets = []
+    parameter_sets = {}
+    luts = {}
+    try:
+        for asset_id in asset_ids:
+            asset = _get_asset(asset_id)
+            parameters = EditParameters.from_mapping(
+                parameters_by_asset.get(asset_id, {})
+            )
+            assets.append(asset)
+            parameter_sets[asset_id] = parameters
+            luts[asset_id] = _get_lut(parameters.lut_id)
+    except (ValueError, DecodeError) as error:
+        abort(400, description=str(error))
+
+    storage = _storage()
+    quality = current_app.config["JPEG_QUALITY"]
+    export_id = uuid4().hex
+
+    def export_work(context):
+        outputs = []
+        used_names = set()
+        total = len(assets)
+        for index, asset in enumerate(assets):
+            if context.cancelled:
+                return None
+            image = decode_image(
+                asset.path.read_bytes(),
+                raw_temp_dir=storage.root,
+            )
+            context.set_progress((index + 0.25) / total)
+            result = process_image(
+                image,
+                parameter_sets[asset.id],
+                grain_seed=_stable_seed(asset.id),
+                lut=luts[asset.id],
+            )
+            if context.cancelled:
+                return None
+            output_name = _unique_output_name(
+                asset.original_name,
+                used_names,
+            )
+            outputs.append((output_name, _encode_jpeg(result, quality)))
+            context.set_progress((index + 1) / total)
+
+        if len(outputs) == 1:
+            name, data = outputs[0]
+            path = storage.path_for("exports", f"{export_id}.jpg")
+            path.write_bytes(data)
+            return {
+                "path": path,
+                "download_name": name,
+                "mimetype": "image/jpeg",
+            }
+
+        path = storage.path_for("exports", f"{export_id}.zip")
+        with ZipFile(path, "w", compression=ZIP_DEFLATED) as archive:
+            for name, data in outputs:
+                archive.writestr(name, data)
+        return {
+            "path": path,
+            "download_name": "pineapple-film-lab-export.zip",
+            "mimetype": "application/zip",
+        }
+
+    job = current_app.extensions["job_queue"].submit(export_work)
+    return {"job_id": job.id}, 202
+
+
+@api.get("/api/jobs/<job_id>")
+def job_status(job_id):
+    job = _get_job(job_id)
+    return {"job": _job_payload(job)}
+
+
+@api.post("/api/jobs/<job_id>/cancel")
+def cancel_job(job_id):
+    queue = current_app.extensions["job_queue"]
+    _get_job(job_id)
+    if not queue.cancel(job_id):
+        abort(409, description="任务已经结束")
+    return {"job": _job_payload(queue.get(job_id))}
+
+
+@api.post("/api/jobs/<job_id>/retry")
+def retry_job(job_id):
+    queue = current_app.extensions["job_queue"]
+    _get_job(job_id)
+    try:
+        retried = queue.retry(job_id)
+    except ValueError as error:
+        abort(400, description=str(error))
+    return {"job_id": retried.id}, 202
+
+
+@api.get("/api/jobs/<job_id>/download")
+def download_job(job_id):
+    job = _get_job(job_id)
+    if job.status.value != "completed" or not isinstance(job.result, dict):
+        abort(409, description="任务尚未完成")
+    path = job.result["path"]
+    if not path.is_file():
+        abort(404, description="导出文件不存在")
+    return send_file(
+        path,
+        mimetype=job.result["mimetype"],
+        as_attachment=True,
+        download_name=job.result["download_name"],
+    )
+
+
 def _storage():
     return current_app.extensions["session_storage"]
 
@@ -162,6 +286,13 @@ def _get_lut(lut_id):
         return current_app.extensions["luts"][lut_id]["lut"]
     except KeyError as error:
         raise ValueError("所选 LUT 不存在") from error
+
+
+def _get_job(job_id):
+    try:
+        return current_app.extensions["job_queue"].get(job_id)
+    except KeyError:
+        abort(404, description="任务不存在")
 
 
 def _asset_payload(asset, image):
@@ -184,13 +315,15 @@ def _resize_for_preview(image, max_edge):
     return cv2.resize(image, target, interpolation=cv2.INTER_AREA)
 
 
-def _encode_jpeg(image):
+def _encode_jpeg(image, quality=None):
     pixels = np.clip(image * 255.0 + 0.5, 0, 255).astype(np.uint8)
     output = BytesIO()
+    if quality is None:
+        quality = current_app.config["JPEG_QUALITY"]
     Image.fromarray(pixels, "RGB").save(
         output,
         format="JPEG",
-        quality=current_app.config["JPEG_QUALITY"],
+        quality=quality,
         optimize=True,
     )
     return output.getvalue()
@@ -198,3 +331,32 @@ def _encode_jpeg(image):
 
 def _stable_seed(value):
     return int(value[:8], 16)
+
+
+def _job_payload(job):
+    return {
+        "id": job.id,
+        "status": job.status.value,
+        "progress": job.progress,
+        "error": job.error,
+        "download_url": (
+            f"/api/jobs/{job.id}/download"
+            if job.status.value == "completed" and isinstance(job.result, dict)
+            else None
+        ),
+    }
+
+
+def _unique_output_name(original_name, used_names):
+    stem = Path(original_name.replace("\\", "/")).stem
+    stem = re.sub(r"[^\w.-]+", "-", stem, flags=re.UNICODE).strip("._-")
+    if not stem:
+        stem = "photo"
+    base = f"{stem}-pineapple-film-lab"
+    candidate = f"{base}.jpg"
+    number = 2
+    while candidate in used_names:
+        candidate = f"{base}-{number}.jpg"
+        number += 1
+    used_names.add(candidate)
+    return candidate

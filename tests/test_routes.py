@@ -1,4 +1,6 @@
 from io import BytesIO
+from time import monotonic, sleep
+from zipfile import ZipFile
 
 from PIL import Image
 
@@ -26,6 +28,18 @@ def upload_asset(client, name="photo.png", data=None):
     )
     assert response.status_code == 201
     return response.get_json()["assets"][0]
+
+
+def wait_for_job(client, job_id, timeout=3):
+    deadline = monotonic() + timeout
+    while monotonic() < deadline:
+        response = client.get(f"/api/jobs/{job_id}")
+        assert response.status_code == 200
+        job = response.get_json()["job"]
+        if job["status"] in {"completed", "failed", "cancelled"}:
+            return job
+        sleep(0.01)
+    raise AssertionError(f"job did not finish: {job_id}")
 
 
 def test_health(client):
@@ -145,3 +159,85 @@ def test_user_cube_lut_can_be_uploaded(client):
 
     assert response.status_code == 201
     assert response.get_json()["lut"]["name"] == "identity.cube"
+
+
+def test_single_export_returns_jpeg(client):
+    asset = upload_asset(client, name="portrait.png")
+    response = client.post(
+        "/api/exports",
+        json={
+            "asset_ids": [asset["id"]],
+            "parameters_by_asset": {
+                asset["id"]: {"preset": "natural-negative"}
+            },
+        },
+    )
+
+    assert response.status_code == 202
+    job_id = response.get_json()["job_id"]
+    assert wait_for_job(client, job_id)["status"] == "completed"
+    download = client.get(f"/api/jobs/{job_id}/download")
+
+    assert download.status_code == 200
+    assert download.mimetype == "image/jpeg"
+    assert "portrait-pineapple-film-lab.jpg" in download.headers[
+        "Content-Disposition"
+    ]
+    Image.open(BytesIO(download.data)).verify()
+
+
+def test_batch_export_returns_zip(client):
+    first = upload_asset(client, name="first.png")
+    second = upload_asset(client, name="second.png")
+    asset_ids = [first["id"], second["id"]]
+    response = client.post(
+        "/api/exports",
+        json={
+            "asset_ids": asset_ids,
+            "parameters_by_asset": {
+                asset_id: {"preset": "natural-negative"}
+                for asset_id in asset_ids
+            },
+        },
+    )
+
+    job_id = response.get_json()["job_id"]
+    assert wait_for_job(client, job_id)["progress"] == 1.0
+    download = client.get(f"/api/jobs/{job_id}/download")
+
+    assert download.status_code == 200
+    assert download.mimetype == "application/zip"
+    with ZipFile(BytesIO(download.data)) as archive:
+        assert archive.namelist() == [
+            "first-pineapple-film-lab.jpg",
+            "second-pineapple-film-lab.jpg",
+        ]
+        for name in archive.namelist():
+            Image.open(BytesIO(archive.read(name))).verify()
+
+
+def test_export_validates_assets_and_job_actions(client):
+    missing = client.post(
+        "/api/exports",
+        json={"asset_ids": [], "parameters_by_asset": {}},
+    )
+    unknown_job = client.get("/api/jobs/missing")
+
+    assert missing.status_code == 400
+    assert unknown_job.status_code == 404
+
+
+def test_completed_job_cannot_be_cancelled_or_retried(client):
+    asset = upload_asset(client)
+    response = client.post(
+        "/api/exports",
+        json={
+            "asset_ids": [asset["id"]],
+            "parameters_by_asset": {asset["id"]: {}},
+        },
+    )
+    job_id = response.get_json()["job_id"]
+    wait_for_job(client, job_id)
+
+    assert client.post(f"/api/jobs/{job_id}/cancel").status_code == 409
+    assert client.post(f"/api/jobs/{job_id}/retry").status_code == 400
