@@ -6,7 +6,14 @@ from zipfile import ZIP_DEFLATED, ZipFile
 
 import cv2
 import numpy as np
-from flask import Blueprint, abort, current_app, request, send_file
+from flask import (
+    Blueprint,
+    abort,
+    current_app,
+    render_template,
+    request,
+    send_file,
+)
 from PIL import Image
 
 from pineapple_film_lab.domain import EditParameters
@@ -17,6 +24,11 @@ from pineapple_film_lab.processing.presets import serialize_presets
 
 
 api = Blueprint("api", __name__)
+
+
+@api.get("/")
+def index():
+    return render_template("index.html")
 
 
 @api.get("/api/health")

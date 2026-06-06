@@ -48,6 +48,18 @@ def test_health(client):
     assert response.get_json() == {"status": "ok", "local_only": True}
 
 
+def test_index_renders_local_workbench(client):
+    response = client.get("/")
+    body = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "凤梨罐头 FILM LAB" in body
+    assert "所有处理均在本机完成" in body
+    assert 'id="photo-input"' in body
+    assert 'id="preview-canvas"' in body
+    assert 'id="queue-strip"' in body
+
+
 def test_presets_are_available(client):
     response = client.get("/api/presets")
 

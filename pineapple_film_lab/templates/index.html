@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0c0d0d">
+  <title>凤梨罐头 FILM LAB</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-toolbar">
+      <div class="brand-lockup" aria-label="凤梨罐头 FILM LAB">
+        <span class="brand-mark" aria-hidden="true">P</span>
+        <span class="brand-name">凤梨罐头 <b>FILM LAB</b></span>
+      </div>
+      <div class="local-status">
+        <span class="status-dot" aria-hidden="true"></span>
+        所有处理均在本机完成
+      </div>
+      <div class="toolbar-actions">
+        <label class="button button-secondary" for="photo-input">
+          <span aria-hidden="true">＋</span>
+          添加照片
+        </label>
+        <input id="photo-input" type="file" accept="image/jpeg,image/png,image/webp,image/tiff,.dng,.nef,.cr2,.cr3,.arw,.raf,.rw2,.orf" multiple>
+        <button id="export-button" class="button button-primary" type="button" disabled>
+          <span aria-hidden="true">↓</span>
+          导出
+        </button>
+      </div>
+    </header>
+
+    <aside class="preset-panel panel" aria-label="胶片预设">
+      <div class="panel-heading">
+        <span>预设</span>
+      </div>
+      <div id="preset-list" class="preset-list">
+        <button class="preset-swatch" type="button" data-preset="night-walk">
+          <span class="swatch night" aria-hidden="true"></span>
+          <span>夜行</span>
+        </button>
+        <button class="preset-swatch" type="button" data-preset="morning-light">
+          <span class="swatch morning" aria-hidden="true"></span>
+          <span>清晨</span>
+        </button>
+        <button class="preset-swatch is-selected" type="button" data-preset="natural-negative">
+          <span class="swatch natural" aria-hidden="true"></span>
+          <span>自然负片</span>
+        </button>
+        <button class="preset-swatch" type="button" data-preset="soft-haze">
+          <span class="swatch haze" aria-hidden="true"></span>
+          <span>柔雾</span>
+        </button>
+        <button class="preset-swatch" type="button" data-preset="documentary-bw">
+          <span class="swatch mono" aria-hidden="true"></span>
+          <span>黑白纪实</span>
+        </button>
+      </div>
+      <label class="lut-button" for="lut-input" title="载入自定义 .cube LUT">
+        <span aria-hidden="true">＋</span>
+        LUT
+      </label>
+      <input id="lut-input" type="file" accept=".cube">
+      <span id="lut-name" class="lut-name">未载入</span>
+    </aside>
+
+    <main class="preview-workspace">
+      <div class="mobile-panel-tabs" role="tablist" aria-label="移动端工具面板">
+        <button type="button" role="tab" aria-selected="false" data-mobile-panel="presets">预设</button>
+        <button type="button" role="tab" aria-selected="false" data-mobile-panel="adjustments">参数</button>
+      </div>
+
+      <div class="preview-toolbar">
+        <div class="view-switcher" role="group" aria-label="预览模式">
+          <button type="button" data-view="original">原片</button>
+          <button type="button" data-view="effect">效果</button>
+          <button class="is-selected" type="button" data-view="split">对比</button>
+        </div>
+        <span id="image-meta" class="image-meta">等待照片</span>
+      </div>
+
+      <section id="preview-canvas" class="preview-canvas" data-mode="split" aria-label="照片预览">
+        <div id="drop-zone" class="empty-state">
+          <span class="empty-mark" aria-hidden="true">＋</span>
+          <strong>拖入照片开始</strong>
+          <span>支持 JPG、PNG、WebP、TIFF 与常见 RAW</span>
+          <label class="button button-primary" for="photo-input">选择照片</label>
+        </div>
+        <div id="preview-stage" class="preview-stage" hidden>
+          <img id="original-image" class="preview-image original-image" alt="原片预览">
+          <div id="processed-layer" class="processed-layer">
+            <img id="processed-image" class="preview-image" alt="处理后预览">
+          </div>
+          <div id="split-divider" class="split-divider" aria-hidden="true">
+            <span>↔</span>
+          </div>
+          <div id="preview-loading" class="preview-loading" hidden>显影中</div>
+        </div>
+      </section>
+    </main>
+
+    <aside class="adjustment-panel panel" aria-label="图像参数">
+      <div class="panel-heading">
+        <span>参数</span>
+        <button id="reset-button" class="text-button" type="button" disabled>重置</button>
+      </div>
+      <div class="control-list">
+        <div class="parameter-control">
+          <label for="preset-strength-range">预设强度</label>
+          <input id="preset-strength-range" data-param="preset_strength" type="range" min="0" max="1" step="0.01" value="1">
+          <input data-param="preset_strength" type="number" min="0" max="1" step="0.01" value="1">
+        </div>
+        <div class="parameter-control">
+          <label for="exposure-range">曝光</label>
+          <input id="exposure-range" data-param="exposure" type="range" min="-3" max="3" step="0.05" value="0">
+          <input data-param="exposure" type="number" min="-3" max="3" step="0.05" value="0">
+        </div>
+        <div class="parameter-control">
+          <label for="contrast-range">对比度</label>
+          <input id="contrast-range" data-param="contrast" type="range" min="-1" max="1" step="0.02" value="0">
+          <input data-param="contrast" type="number" min="-1" max="1" step="0.02" value="0">
+        </div>
+        <div class="parameter-control">
+          <label for="highlights-range">高光</label>
+          <input id="highlights-range" data-param="highlights" type="range" min="-1" max="1" step="0.02" value="0">
+          <input data-param="highlights" type="number" min="-1" max="1" step="0.02" value="0">
+        </div>
+        <div class="parameter-control">
+          <label for="shadows-range">阴影</label>
+          <input id="shadows-range" data-param="shadows" type="range" min="-1" max="1" step="0.02" value="0">
+          <input data-param="shadows" type="number" min="-1" max="1" step="0.02" value="0">
+        </div>
+        <div class="parameter-control">
+          <label for="temperature-range">色温</label>
+          <input id="temperature-range" data-param="temperature" type="range" min="-1" max="1" step="0.02" value="0">
+          <input data-param="temperature" type="number" min="-1" max="1" step="0.02" value="0">
+        </div>
+        <div class="parameter-control">
+          <label for="saturation-range">饱和度</label>
+          <input id="saturation-range" data-param="saturation" type="range" min="-1" max="1" step="0.02" value="0">
+          <input data-param="saturation" type="number" min="-1" max="1" step="0.02" value="0">
+        </div>
+        <div class="parameter-control">
+          <label for="halation-range">光晕</label>
+          <input id="halation-range" data-param="halation" type="range" min="0" max="1" step="0.02" value="0">
+          <input data-param="halation" type="number" min="0" max="1" step="0.02" value="0">
+        </div>
+        <div class="parameter-control">
+          <label for="grain-range">颗粒</label>
+          <input id="grain-range" data-param="grain" type="range" min="0" max="1" step="0.02" value="0">
+          <input data-param="grain" type="number" min="0" max="1" step="0.02" value="0">
+        </div>
+        <div class="parameter-control">
+          <label for="vignette-range">暗角</label>
+          <input id="vignette-range" data-param="vignette" type="range" min="0" max="1" step="0.02" value="0">
+          <input data-param="vignette" type="number" min="0" max="1" step="0.02" value="0">
+        </div>
+      </div>
+      <button id="apply-all-button" class="button button-secondary apply-all-button" type="button" disabled>应用到全部</button>
+    </aside>
+
+    <section id="queue-strip" class="queue-strip" aria-label="照片队列">
+      <div class="queue-heading">
+        <span>照片</span>
+        <b id="asset-count">0</b>
+      </div>
+      <div id="queue-items" class="queue-items">
+        <span class="queue-empty">尚未添加照片</span>
+      </div>
+      <div class="export-status">
+        <div>
+          <span id="job-label">等待导出</span>
+          <progress id="job-progress" max="1" value="0"></progress>
+        </div>
+        <div class="job-actions">
+          <button id="cancel-job-button" class="icon-button" type="button" title="取消导出" disabled>■</button>
+          <button id="retry-job-button" class="icon-button" type="button" title="重试导出" disabled>↻</button>
+          <a id="download-link" class="button button-secondary is-disabled" href="#" aria-disabled="true">
+            <span aria-hidden="true">↓</span>
+            下载
+          </a>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="status-region" class="status-region" role="status" aria-live="polite" aria-atomic="true"></div>
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>
