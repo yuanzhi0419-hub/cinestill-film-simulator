@@ -9,17 +9,21 @@
 	<key>CFBundleExecutable</key>
 	<string>applet</string>
 	<key>CFBundleIconFile</key>
-	<string>applet</string>
-	<key>CFBundleIconName</key>
-	<string>applet</string>
+	<string>camera-icon.icns</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.yuanzhi0419.pineapple-film-lab</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>凤梨罐头 FILM LAB</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1.0</string>
 	<key>CFBundleSignature</key>
 	<string>aplt</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
 	<key>LSMinimumSystemVersionByArchitecture</key>
 	<dict>
 		<key>x86_64</key>

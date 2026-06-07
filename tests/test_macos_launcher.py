@@ -31,7 +31,11 @@ def test_launcher_icon_assets_are_bundled():
     assert icon_png.stat().st_size > 100_000
     assert icon_icns.stat().st_size > 100_000
     assert (launcher / "Contents/Info.plist").is_file()
-    assert (launcher / "Contents/Resources/applet.icns").is_file()
+    assert (launcher / "Contents/Resources/camera-icon.icns").is_file()
+    assert not (launcher / "Contents/Resources/Assets.car").exists()
+    assert not (launcher / "Contents/Resources/applet.icns").exists()
     assert "assets/macos/camera-icon.icns" in build_script
     assert "launcher/凤梨罐头 FILM LAB.app" in build_script
+    assert "com.yuanzhi0419.pineapple-film-lab" in build_script
+    assert "CFBundleIconName" in build_script
     assert "path to me" in build_script
