@@ -47,7 +47,14 @@ FLASK_APP=run.py flask run --host 127.0.0.1 --port 5001
 ./scripts/build_macos_launcher.sh
 ```
 
-桌面会生成“凤梨罐头 FILM LAB.app”。之后双击该图标即可在后台启动服务并自动打开浏览器。重复双击不会重复启动服务，只会打开现有页面。
+脚本会生成两个带银色相机图标的“凤梨罐头 FILM LAB.app”：
+
+- 项目内：`launcher/凤梨罐头 FILM LAB.app`
+- 桌面：`~/Desktop/凤梨罐头 FILM LAB.app`
+
+之后双击任意一个图标即可在后台启动服务并自动打开浏览器。重复双击不会重复启动服务，只会打开现有页面。
+
+图标源文件保存在 `assets/macos/camera-icon.png`，macOS 图标文件保存在 `assets/macos/camera-icon.icns`。
 
 后台服务默认使用 [http://127.0.0.1:7860](http://127.0.0.1:7860)，日志保存在：
 
