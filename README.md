@@ -39,6 +39,24 @@ python run.py
 FLASK_APP=run.py flask run --host 127.0.0.1 --port 5001
 ```
 
+## macOS 快捷启动
+
+项目提供无需打开终端的桌面启动器。首次安装依赖后，运行一次：
+
+```bash
+./scripts/build_macos_launcher.sh
+```
+
+桌面会生成“凤梨罐头 FILM LAB.app”。之后双击该图标即可在后台启动服务并自动打开浏览器。重复双击不会重复启动服务，只会打开现有页面。
+
+后台服务默认使用 [http://127.0.0.1:7860](http://127.0.0.1:7860)，日志保存在：
+
+```text
+~/Library/Logs/PineappleFilmLab/server.log
+```
+
+如果项目目录发生移动，请重新运行 `./scripts/build_macos_launcher.sh` 生成启动器。
+
 ## Windows 安装
 
 在 PowerShell 中运行：
