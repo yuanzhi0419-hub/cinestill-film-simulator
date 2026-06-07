@@ -1,3 +1,5 @@
+<img width="3024" height="1544" alt="screenshot-20260607-124756" src="https://github.com/user-attachments/assets/8c9da506-452e-4c1d-9f67-6a20e6643349" />
+
 # 凤梨罐头 FILM LAB
 
 凤梨罐头 FILM LAB 是由 `yuanzhi0419-hub` 独立开发的本地照片处理工作台。它提供原创胶片预设、基础色调调整、光晕、颗粒、暗角、批量处理和用户自带 `.cube` LUT 支持。
